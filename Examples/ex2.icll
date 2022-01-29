@@ -1,0 +1,16 @@
+$
+ Simple example to show the use of references,
+ operation sequences and operators
+$
+
+def 
+    a : ref int = new 10 
+    b : ref string = new "apples"
+in 
+    println !a ;
+    a := !a + !a - (!a - 2) ;
+    println !a ;
+    println !b ;
+    b := "bananas" ;
+    println !b
+end ;;

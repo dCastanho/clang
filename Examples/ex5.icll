@@ -1,0 +1,25 @@
+$
+    Records, first class functions and functions
+    with def ins
+$
+
+def 
+    fog : ((string)int,(int)boolean)(string)boolean =
+        fun f : (string)int, g : (int)boolean ->
+            fun s : string -> g(f(s)) end end 
+
+    f : (string)int =
+            def 
+                t : ref string = new ""
+            in 
+                  fun x : string -> t := !t + x ; if !t == "aaa" then -1 else 1 end end 
+            end 
+    g : (int)boolean = 
+        fun i : int -> i >= 0 end
+in 
+    println (fog(f,g)("a")) ;
+    println (fog(f,g)("a")) ;
+    println (fog(f,g)("a"))
+end ;;
+
+

@@ -1,0 +1,338 @@
+
+PARSER_BEGIN(Parser)
+package Parser;
+
+import Nodes.*;
+import Types.*;
+import Values.*;
+import Structures.*;
+
+import java.util.LinkedList;
+import java.util.List;
+
+/** ID lister. */
+public class Parser {}
+
+PARSER_END(Parser)
+SKIP :
+{
+  " "
+| "\t"
+| "\r"
+| "\n"
+| <"$" ( ["a"-"z","A"-"Z","0"-"9"] | "." | "," | "=" | "<" | ">" | "-" | " " | "\n" | "\t" | "\r" )* "$">
+}
+
+TOKEN :
+{ 
+  <TRUE : "true" > 
+  | 
+  < FALSE : "false" > 
+  |
+  < OR : "||" >
+  |
+  < AND : "&&" >
+  |
+  < EQUALS : "==" >
+  |
+  < DIFF : "!=" > 
+  |
+  < NEG : "~" >
+  |
+  < GREATER : ">" >
+  |
+  < SMALLER : "<" >
+  |
+  < EQ_GREATER : ">=" >
+  |
+  < EQ_SMALLER : "<=" >
+  |
+  < DEF: "def" >
+  |
+  < EQ: "=" >
+  |
+  < REC: "rec" >
+  |
+  < IN : "in" > 
+  |
+  < END : "end" > 
+  |
+  < Num: (["0"-"9"]) + >
+  |
+  < LBRKT : "[" > 
+  |
+  < RBRKT : "]" >
+  | 
+  < PLUS : "+" >
+  |
+  < MINUS : "-">
+  |
+  < MUL : "*">
+  |
+  < DOT : "." >
+  |
+  < DIV : "/">
+  |
+  < LPAR : "(" >
+  |
+  < RPAR : ")" >
+  |
+  < EL: ";;" >
+  |
+  < NEW : "new" >
+  |
+  < QUOTE : "\""> 
+  |
+  < STRING : "string"> 
+  |
+  < ASSIGN : ":=" >
+  | 
+  < WHILE : "while" >
+  |
+  < DO : "do" >
+  |
+  < PRINT : "print" >
+  |
+  < PRINTLN : "println" >
+  |
+  < SEQUENTIATOR : ";">
+  |
+  < DEREF : "!" >
+  |
+  < IF : "if" >
+  |
+  < THEN : "then" >
+  |
+  < ELSE : "else" >
+  |
+  < INT : "int" >
+  |
+  < BOOL : "boolean" >
+  |
+  < REF : "ref" >
+  |
+  < TYPEIS : ":" >
+  |
+  < FUN : "fun" >
+  |
+  < ARROW : "->" >
+  |
+  < COMMA : "," > 
+  |
+  < STRING_LITERAL : <QUOTE>
+      (   (~["\"","\\","\n","\r"])
+        | ("\\"
+            ( ["n","t","b","r","f","\\","'","\""]
+            | ["0"-"7"] ( ["0"-"7"] )?
+            | ["0"-"3"] ["0"-"7"] ["0"-"7"]
+            )
+          )
+      )*  <QUOTE> >
+  |
+  < Id: ["a"-"z","A"-"Z"] ( ["a"-"z","A"-"Z","0"-"9"] )* >
+
+}
+
+ASTNode Start() :
+{
+ASTNode t1;
+}
+{
+   t1 =EM() <EL>
+	{ return t1; }
+}
+
+ASTNode EM() :
+{
+ASTNode t1;
+ASTNode t2;
+Token tok;
+}
+{
+  t1 = E0() ( <SEQUENTIATOR> t2=E0() { t1 = new ASTSeq(t1, t2); })*
+  {return t1;}
+}
+
+ASTNode E0() :
+{
+ASTNode t1;
+ASTNode t2;
+}
+{
+  t1=E() (<ASSIGN> t2=E() { t1 = new ASTAssign(t1, t2); })?
+  {return t1;}
+}
+
+
+ASTNode E() :
+{
+ASTNode t1;
+ASTNode t2;
+Token tok;
+}
+{
+  t1 = BM() ( tok=<OR> t2=BM() { t1 = new ASTBoolOps(t1, t2, tok); })*
+
+  {return t1;}
+}
+
+ASTNode BM() :
+{
+  ASTNode t1;
+  ASTNode t2;
+  Token tok;
+}
+{
+  t1 = R() ( tok=<AND> t2=R() { t1 = new ASTBoolOps(t1, t2, tok); })*
+
+  {return t1;}
+}
+
+ASTNode R() :
+{
+  ASTNode t1;
+  ASTNode t2;
+  Token tok;
+}
+{
+  t1 = Exp() ( (tok=<EQUALS> | tok=<GREATER> | tok=<EQ_GREATER> | tok=<EQ_SMALLER> | tok=<SMALLER> | tok=<DIFF> )
+         t2=Exp() { t1 = new ASTOverRelop(t1, t2, tok); })?
+
+  {return t1;}
+}
+
+ASTNode Exp() :
+{
+ASTNode t1,t2;
+Token tok;
+}
+{
+     t1 = Term() ( ( tok=<PLUS> | tok=<MINUS> ) t2=Exp() 
+
+                 {  if(tok.kind == PLUS)
+                      t1 = new ASTOverloadedAdd(t1, t2);
+                    else
+                      t1 = new ASTOperator(t1,t2, tok); } ) *
+    
+     { return t1; }
+
+}
+
+ASTNode Term() :
+{
+ASTNode t1,t2;
+List<ASTNode> arguments = null;
+Token tok;
+}
+{
+     t1=Fact() ( ( ( tok=<MUL> | tok=<DIV> ) t2=Term()  { t1 = new ASTOperator(t1,t2, tok); } )+
+      
+           | <LPAR> arguments=AL() <RPAR> { t1 = new ASTFunApplication(t1, arguments); } 
+
+           | <DOT> tok=<Id> { t1 = new ASTRecAccess(t1, tok.image); } )*
+
+     { return t1; }  
+	
+}
+
+List<ASTNode> AL() : 
+{
+  List<ASTNode> arguments = new LinkedList<>();
+  ASTNode t1;
+}
+{
+  (t1=EM() { arguments.add(t1); } (<COMMA> t1 = EM() { arguments.add(t1); } )*)?
+  { return arguments; }  
+}
+
+InsertionMap<String, IType> PL() :
+{
+  IType t;
+  Token tok;
+  InsertionMap<String, IType> args = new AccompaniedHashMap<>();
+}
+{
+  ( tok=<Id> <TYPEIS> t=Type() { args.put(tok.image, t); }
+       ( <COMMA> tok=<Id> <TYPEIS> t=Type() { args.put(tok.image, t); } )* )? 
+       
+  { return args; }
+}
+
+
+ASTNode Fact() :
+{
+ASTNode t1;
+ASTNode t2;
+ASTNode t3 = null;
+int n = 0;
+IType type = null;
+Token tok;
+InsertionMap<String, ASTNode> vars = new AccompaniedHashMap<>();
+InsertionMap<String, IType> types = new AccompaniedHashMap<>();
+InsertionMap<String, IType> args = new AccompaniedHashMap<>();
+List<ASTNode> arguments = new LinkedList<>();
+}
+{
+   ( tok=<Num> { t1 = new ASTNum(Integer.parseInt(tok.image)); } | 
+     <LPAR> t1=EM() <RPAR> | 
+     <MINUS> t1=Fact() { t1= new ASTUneg(t1); } | 
+     tok=<Id> { t1 = new ASTId(tok.image); } |
+     <DEF> ( tok=<Id> <TYPEIS> type=Type() <EQ> t1=EM()
+          { vars.put(tok.image, t1);             
+            types.put(tok.image, type); }
+     )+ <IN> t1=EM() <END> { t1 = new ASTDef(vars, t1, types); } |
+     <FALSE> {t1 = new ASTBool(false); } |
+     <TRUE> {t1 = new ASTBool(true); } |
+     <NEG> t1=Fact() { t1 = new ASTNeg(t1); } |
+     <NEW> t1=EM() { t1 = new ASTRef(t1); } |
+     <WHILE> t1=EM() <DO> t2=EM() <END> { t1= new ASTWhile(t1, t2); }|
+     <DEREF>t1=Fact()  { t1= new ASTDeref(t1); } |
+     <IF> t1=EM() <THEN> t2=EM() (<ELSE> t3=EM())? <END> { t1= new ASTIf(t1, t2, t3); } | 
+     <PRINT> t1=E() {t1= new ASTPrint(t1, false);} | 
+     <PRINTLN> t1=E() {t1= new ASTPrint(t1, true);} | 
+     <LBRKT> tok=<Id> <EQ> t1 = EM() { vars.put(tok.image, t1); n++; } 
+      (<COMMA> tok=<Id> <EQ> t1 = EM() { vars.put(tok.image, t1); n++; })* <RBRKT> 
+      { t1 = new ASTRec(vars, n); } | 
+     <FUN> args=PL() <ARROW> t1 = EM() {t1 = new ASTFun(args, t1); } <END> |
+     tok=<STRING_LITERAL>{t1 = new ASTString(  tok.image.substring(1, tok.image.length()-1)); }
+   )   
+  { return t1; }  
+}
+
+
+IType Type() :
+{
+IType t = null;
+Token tokType = null;
+Token id = null;
+InsertionMap<String, IType> recTypes = new AccompaniedHashMap<>();
+List<IType> args = new LinkedList<>();
+}
+{
+  (
+     tokType=<BOOL> | tokType=<INT> | tokType=<REF> t=Type() | tokType=<STRING> | 
+     tokType=<REC> <LBRKT> id=<Id> <TYPEIS> t = Type() { recTypes.put(id.image, t); } 
+            (<COMMA> id=<Id> <TYPEIS> t = Type() { recTypes.put(id.image, t); })* <RBRKT> | 
+     <LPAR> (t = Type() { args.add( t ); } ( <COMMA> t = Type() { args.add( t ); } )*)? <RPAR> t = Type()
+  )
+  { 
+    IType type = null;
+    if(tokType == null)
+      type = new TypeFunction(args, t);
+    else if( tokType.kind == BOOL)
+      type = TypeBool.BOOL_TYPE;
+    else if( tokType.kind == INT)
+      type = TypeInt.INT_TYPE;
+    else if(tokType.kind == REF)
+      type = new TypeRef( t );
+    else if(tokType.kind == STRING)
+      type = TypeString.STRING_TYPE;
+    else if(tokType.kind == REC)
+      type = new TypeRecord(recTypes);
+
+
+    return type; 
+  }  
+}
+
+

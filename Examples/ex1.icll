@@ -1,0 +1,12 @@
+$ 
+ Simple example to show the def.. in.. end construct
+ as well as string and overloaded addition and comments 
+$
+
+def 
+    a : int = 11
+    b : int = a + a
+    c : string = "a + a = " + a
+in 
+    print c
+end ;;

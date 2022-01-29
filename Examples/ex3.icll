@@ -1,0 +1,20 @@
+$
+ Example to show nested definitions, as well
+ as string comparison and ifs
+$
+
+def 
+    a : ref string = new "Hello" 
+    b : ref string = new "" 
+in 
+    b := def 
+            t : string = "World"
+        in 
+            if t != !a then 
+                println t ;
+                println !a ;
+                a := !a + " " + t 
+            end ; !a
+        end ; 
+    print !b 
+end ;;

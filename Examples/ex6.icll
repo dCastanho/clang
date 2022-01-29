@@ -1,0 +1,17 @@
+$
+ Example showing records
+$
+
+def 
+    jonh : rec[age : int, address : string] = [age = 80, address = "n10"]
+    marybeth : rec[age : int, address : string] = [age = 78, address = "n32"]
+    compareAges : (rec[age : int, address : string],rec[age : int, address : string])boolean = 
+        fun p1 : rec[age : int, address : string], p2 : rec[age : int, address : string] ->
+            p1.age > p2.age end 
+    printPerson : (string, rec[age : int, address : string])string = fun name : string, p1 : rec[age : int, address : string] ->
+        name + " -> age: " + p1.age + " address: " + p1.address end
+in 
+    if compareAges(jonh,marybeth) then 
+        println printPerson("Jonh", jonh)
+    else println printPerson("Mary Beth", marybeth) end
+end ;;
